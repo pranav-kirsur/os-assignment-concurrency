@@ -1,17 +1,23 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#define _POSIX_C_SOURCE 199309L //required for clock
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <wait.h>
+#include <limits.h>
+#include <fcntl.h>
+#include <time.h>
+#include <pthread.h>
+#include <inttypes.h>
+#include <math.h>
 
-
-
-int * shareMem(size_t size){
+int *shareMem(size_t size)
+{
     key_t mem_key = IPC_PRIVATE;
     int shm_id = shmget(mem_key, size, IPC_CREAT | 0666);
-    return (int*)shmat(shm_id, NULL, 0);
+    return (int *)shmat(shm_id, NULL, 0);
 }
 
 //swap function
@@ -128,31 +134,69 @@ void concurrent_quicksort(int arr[], int l, int r)
         {
             int status;
             //wait for both processes to finish
-            waitpid(pid1,&status,0);
-            waitpid(pid2,&status,0);
+            waitpid(pid1, &status, 0);
+            waitpid(pid2, &status, 0);
         }
-        
     }
 
     return;
+}
+
+void runsorts(int n)
+{
+    struct timespec ts;
+
+    //assign shared memory
+    int *arr = shareMem(sizeof(int) * (n + 1));
+
+    //take input
+    for (int i = 0; i < n; i++)
+    {
+        scanf("%d", &arr[i]);
+    }
+
+    //make a copied array for comparision
+    int brr[n + 1];
+    for (int i = 0; i < n; i++)
+    {
+        brr[i] = arr[i];
+    }
+
+    printf("Running concurrent_quicksort for n = %d\n", n);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    long double st = ts.tv_nsec / (1e9) + ts.tv_sec;
+
+    //multiprocess quicksort
+    concurrent_quicksort(arr, 0, n - 1);
+
+    //print time
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    long double en = ts.tv_nsec / (1e9) + ts.tv_sec;
+    printf("time = %Lf\n", en - st);
+    long double t1 = en - st;
+
+    printf("Running normal quicksort for n = %d\n", n);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    st = ts.tv_nsec / (1e9) + ts.tv_sec;
+
+    // normal quicksort
+    quicksort(brr, 0, n - 1);
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    en = ts.tv_nsec / (1e9) + ts.tv_sec;
+    printf("time = %Lf\n", en - st);
+    long double t3 = en - st;
+
+    printf("Concurrent quicksort ran %Lf times faster than normal quicksort\n", t3 / t1);
+
+    //release shared memory
+    shmdt(arr);
 }
 
 int main()
 {
     int n;
     scanf("%d", &n);
-    int *arr = shareMem(sizeof(int)*(n+1));
-    for (int i = 0; i < n; i++)
-    {
-        scanf("%d", &arr[i]);
-    }
-    concurrent_quicksort(arr, 0, n - 1);
-    for (int i = 0; i < n; i++)
-    {
-        printf("%d ", arr[i]);
-    }
-
-    //release shared memory
-    shmdt(arr);
+    runsorts(n);
     return 0;
 }
