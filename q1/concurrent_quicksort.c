@@ -119,7 +119,7 @@ void concurrent_quicksort(int arr[], int l, int r)
     if (pid1 == 0)
     {
         //sort left part
-        quicksort(arr, l, pivot_index - 1);
+        concurrent_quicksort(arr, l, pivot_index - 1);
         _exit(1);
     }
     else
@@ -127,7 +127,7 @@ void concurrent_quicksort(int arr[], int l, int r)
         int pid2 = fork();
         if (pid2 == 0)
         {
-            quicksort(arr, pivot_index + 1, r);
+            concurrent_quicksort(arr, pivot_index + 1, r);
             _exit(1);
         }
         else
@@ -141,6 +141,8 @@ void concurrent_quicksort(int arr[], int l, int r)
 
     return;
 }
+
+//threaded quicksort
 
 void runsorts(int n)
 {
