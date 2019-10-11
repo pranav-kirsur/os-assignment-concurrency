@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <pthread.h>
 
 //states
@@ -35,7 +36,7 @@ struct Cab *cabs_array;
 //returns random number in the given range(both inclusive)
 int getrandom(int lower_bound, int upper_bound)
 {
-    return (rand() % upper_bound - lower_bound + 1) + lower_bound;
+    return (rand() % (upper_bound - lower_bound + 1)) + lower_bound;
 }
 
 void book_cab(int cab_type, int maxwaitime, int ride_time)
@@ -55,7 +56,7 @@ void *rider(void *args)
 
     //book the cab
     book_cab(cab_type, MAX_WAIT_TIME, ride_time);
-    printf("Rider %d has requested a cab of type %s with max waiting time as %d and ride time as %d\n", id, cab_type == TYPE_PREMIER ? "premier" : "pool", MAX_WAIT_TIME, ride_time);
+    printf("Rider %d has requested a cab of type %d with max waiting time as %d and ride time as %d\n", id, cab_type, MAX_WAIT_TIME, ride_time);
     fflush(stdout);
 
     //end the thread
@@ -78,6 +79,9 @@ int main()
         cabs_array[i].id = i;
         cabs_array[i].state = STATE_WAIT;
     }
+
+    //seed random
+    srand(time(NULL));
 
     //create mutex lock
     pthread_mutex_init(&lock, NULL);
