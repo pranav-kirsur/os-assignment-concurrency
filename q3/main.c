@@ -43,15 +43,58 @@ int getrandom(int lower_bound, int upper_bound)
     return (rand() % (upper_bound - lower_bound + 1)) + lower_bound;
 }
 
-void book_cab(int cab_type, int maxwaitime, int ride_time)
+void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
 {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     time_t inittime = ts.tv_sec;
+    //while time is less than maxwaittime
     while (clock_gettime(CLOCK_REALTIME, &ts), ts.tv_sec - inittime < maxwaitime)
     {
+        //flag to check whether a cab has been assigned
+        int is_cab_assigned = 0;
         //lock and then look for cabs
-        
+        pthread_mutex_lock(&lock);
+        if (cab_type == TYPE_PREMIER)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (cabs_array[i].state == STATE_WAIT)
+                {
+                    cabs_array[i].state = STATE_ON_RIDE_PREMIER;
+                    is_cab_assigned = 1;
+                    printf("Rider %d has been assigned cab number %d \n", id, cabs_array[i].id);
+                    fflush(stdout);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (cabs_array[i].state == STATE_WAIT)
+                {
+                    cabs_array[i].state = STATE_ON_RIDE_POOL_ONE;
+                    is_cab_assigned = 1;
+                    printf("Rider %d has been assigned cab number %d \n", id, cabs_array[i].id);
+                    break;
+                }
+                else if (cabs_array[i].state == STATE_ON_RIDE_POOL_ONE)
+                {
+                    cabs_array[i].state = STATE_ON_RIDE_POOL_FULL;
+                    is_cab_assigned = 1;
+                    printf("Rider %d has been assigned cab number %d \n", id, cabs_array[i].id);
+                    break;
+                }
+            }
+        }
+        //unlock mutex
+        pthread_mutex_unlock(&lock);
+        if(is_cab_assigned)
+        {
+            break;
+        }
     }
     return;
 }
@@ -71,7 +114,7 @@ void *rider(void *args)
     fflush(stdout);
 
     //book the cab
-    book_cab(cab_type, MAX_WAIT_TIME, ride_time);
+    book_cab(cab_type, MAX_WAIT_TIME, ride_time, id);
 
     //end the thread
     return NULL;
