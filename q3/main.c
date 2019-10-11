@@ -320,16 +320,16 @@ int main()
         pthread_join(rider_threads[i], NULL);
     }
 
-    //in case threads are waiting we shall increment semaphore m times to allow threads to escape out of semaphore out of wait
+    //in case threads are waiting we shall increment semaphore k times to allow threads to escape out of semaphore out of wait
     while (1)
     {
         if (num_in_sim == 0)
         {
-            for (int i = 0; i < m; i++)
+            for (int i = 0; i < k; i++)
             {
                 sem_post(&semaphore_waiting_for_payment_server);
             }
-            break;
+            break;  
         }
     }
 
