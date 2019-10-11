@@ -3,6 +3,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 //states
 #define STATE_WAIT 0
@@ -34,8 +35,20 @@ struct Rider
 //mutex lock for the threads
 pthread_mutex_t lock;
 
+//mutex lock for the payment server
+pthread_mutex_t payment_lock;
+
+//number of riders currently in simulation
+int num_in_sim;
+
 //global variable that contains array of cab structs
 struct Cab *cabs_array;
+
+//global variable that contains the array that contains for whether or not rider is waiting for payment server
+int *is_waiting_for_payment_server;
+
+//semaphore for people waiting for payment server
+sem_t semaphore_waiting_for_payment_server;
 
 //returns random number in the given range(both inclusive)
 int getrandom(int lower_bound, int upper_bound)
@@ -43,7 +56,7 @@ int getrandom(int lower_bound, int upper_bound)
     return (rand() % (upper_bound - lower_bound + 1)) + lower_bound;
 }
 
-void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
+int book_cab(int cab_type, int maxwaitime, int ride_time, int id)
 {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -73,7 +86,7 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     sleep(ride_time);
 
                     //print that ride has ended
-                    printf("Rider %d has finished the ride\n", id);
+                    printf("Rider %d has finished the ride and is waiting for a payment server\n", id);
 
                     //modify status of cab the rider was in inside of a mutex lock
                     pthread_mutex_lock(&lock);
@@ -101,7 +114,7 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     sleep(ride_time);
 
                     //print that ride has ended
-                    printf("Rider %d has finished the ride\n", id);
+                    printf("Rider %d has finished the ride and is waiting for a payment server\n", id);
 
                     //modify status of cab the rider was in inside of a mutex lock
                     pthread_mutex_lock(&lock);
@@ -130,7 +143,7 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     sleep(ride_time);
 
                     //print that ride has ended
-                    printf("Rider %d has finished the ride\n", id);
+                    printf("Rider %d has finished the ride and is waiting for a payment server\n", id);
 
                     //modify status of cab the rider was in inside of a mutex lock
                     pthread_mutex_lock(&lock);
@@ -150,19 +163,18 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
         }
         if (is_cab_assigned)
         {
-            return;
+            return 1;
         }
         else
         {
             //release the mutex lock
             pthread_mutex_unlock(&lock);
         }
-        
     }
     //print timeout message
     printf("Rider %d timed out\n", id);
     fflush(stdout);
-    return;
+    return -1;
 }
 
 void *rider(void *args)
@@ -180,9 +192,67 @@ void *rider(void *args)
     fflush(stdout);
 
     //book the cab
-    book_cab(cab_type, MAX_WAIT_TIME, ride_time, id);
+    int cab_assigned = book_cab(cab_type, MAX_WAIT_TIME, ride_time, id);
+
+    //if rider didn't timeout then set waiting for payment server and increment the semaphore
+    if (cab_assigned != -1)
+    {
+        is_waiting_for_payment_server[id] = 1;
+        sem_post(&semaphore_waiting_for_payment_server);
+    }
 
     //end the thread
+    return NULL;
+}
+
+struct PaymentServer
+{
+    int id;
+};
+
+void *payment_server(void *payment_args)
+{
+    //get id from the arguments
+    int id = ((struct PaymentServer *)payment_args)->id;
+
+    while (num_in_sim > 0)
+    {
+
+        //wait for semaphore
+        sem_wait(&semaphore_waiting_for_payment_server);
+
+        //lock mutex and look for rider
+        pthread_mutex_lock(&payment_lock);
+        int rider = 0;
+        for (rider = 0; rider < m; rider++)
+        {
+            if (is_waiting_for_payment_server[rider])
+            {
+                break;
+            }
+        }
+        if (rider < m)
+        {
+            is_waiting_for_payment_server[rider] = 0;
+        }
+
+        //release lock
+        pthread_mutex_unlock(&payment_lock);
+
+        //in case no rider is waiting
+        if (rider == m)
+        {
+            continue;
+        }
+
+        printf("Rider %d has been assigned payment server %d\n", rider, id);
+
+        //sleep for 2 s
+        sleep(2);
+
+        printf("Rider %d has finished payment\n", rider);
+        num_in_sim--;
+    }
     return NULL;
 }
 
@@ -194,6 +264,15 @@ int main()
 
     //create array of cab structs
     cabs_array = (struct Cab *)malloc(n * sizeof(struct Cab));
+
+    //initialise number of riders in simulation
+    num_in_sim = m;
+
+    //create array of flags for payment server
+    is_waiting_for_payment_server = (int *)malloc(m * sizeof(int));
+
+    //create semaphore for payment servers
+    sem_init(&semaphore_waiting_for_payment_server, 0, 0);
 
     //initialise cabs
     for (int i = 0; i < n; i++)
@@ -207,10 +286,13 @@ int main()
 
     //create mutex lock
     pthread_mutex_init(&lock, NULL);
+    pthread_mutex_init(&payment_lock, NULL);
 
     //Store rider threads in an array
     pthread_t rider_threads[m];
     struct Rider args[m];
+
+    printf("Simulation started\n");
 
     //create rider threads
     for (int i = 0; i < m; i++)
@@ -219,10 +301,47 @@ int main()
         pthread_create(&rider_threads[i], NULL, rider, &args[i]);
     }
 
+    //store payment server threads in an array
+    pthread_t payment_server_threads[k];
+
+    //payment server thread args
+    struct PaymentServer payment_server_args[k];
+
+    //create payment server threads
+    for (int i = 0; i < k; i++)
+    {
+        payment_server_args[i].id = i;
+        pthread_create(&payment_server_threads[i], NULL, payment_server, &payment_server_args[i]);
+    }
+
     //wait for threads to complete
     for (int i = 0; i < m; i++)
     {
         pthread_join(rider_threads[i], NULL);
     }
+
+    //in case threads are waiting we shall increment semaphore m times to allow threads to escape out of semaphore out of wait
+    while (1)
+    {
+        if (num_in_sim == 0)
+        {
+            for (int i = 0; i < m; i++)
+            {
+                sem_post(&semaphore_waiting_for_payment_server);
+            }
+            break;
+        }
+    }
+
+    for (int i = 0; i < k; i++)
+    {
+        pthread_join(payment_server_threads[i], NULL);
+    }
+
+    //destroy semaphore
+    sem_destroy(&semaphore_waiting_for_payment_server);
+
+    printf("Simulation ended\n");
+
     return 0;
 }
