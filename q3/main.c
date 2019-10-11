@@ -26,18 +26,21 @@ struct Rider
     int id;
 };
 
+//mutex lock for the threads
+pthread_mutex_t lock;
+
 //global variable that contains array of cab structs
-struct Cab *cabs;
+struct Cab *cabs_array;
 
 //returns random number in the given range(both inclusive)
-int random(int lower_bound, int upper_bound)
+int getrandom(int lower_bound, int upper_bound)
 {
     return (rand() % upper_bound - lower_bound + 1) + lower_bound;
 }
 
 void book_cab(int cab_type, int maxwaitime, int ride_time)
 {
-
+    return;
 }
 
 void *rider(void *args)
@@ -47,41 +50,47 @@ void *rider(void *args)
     int id = rider_args->id;
 
     //generate random arguments for booking cab
-    int cab_type = random(0, 1);
-    int ride_time = random(1, 5);
+    int cab_type = getrandom(0, 1);
+    int ride_time = getrandom(1, 5);
 
     //book the cab
     book_cab(cab_type, MAX_WAIT_TIME, ride_time);
+    printf("Rider %d has requested a cab of type %s with max waiting time as %d and ride time as %d\n", id, cab_type == TYPE_PREMIER ? "premier" : "pool", MAX_WAIT_TIME, ride_time);
+    fflush(stdout);
 
     //end the thread
-    exit(1);
+    return NULL;
 }
 
 int main()
 {
     int n, m, k;
     printf("Enter the number of cabs, the  number of riders, and the number of payment servers\n");
+    fflush(stdout);
     scanf("%d%d%d", &n, &m, &k);
 
     //create array of cab structs
-    cabs = (struct Cab *)malloc(n * sizeof(struct Cab));
+    cabs_array = (struct Cab *)malloc(n * sizeof(struct Cab));
 
     //initialise cabs
     for (int i = 0; i < n; i++)
     {
-        cabs[i].id = i;
-        cabs[i].state = STATE_WAIT;
+        cabs_array[i].id = i;
+        cabs_array[i].state = STATE_WAIT;
     }
+
+    //create mutex lock
+    pthread_mutex_init(&lock, NULL);
 
     //Store rider threads in an array
     pthread_t rider_threads[m];
+    struct Rider args[m];
 
     //create rider threads
     for (int i = 0; i < m; i++)
     {
-        struct Rider args;
-        args.id = i;
-        pthread_create(&rider_threads[i], NULL, rider, &args)
+        args[i].id = i;
+        pthread_create(&rider_threads[i], NULL, rider, &args[i]);
     }
 
     //wait for threads to complete
