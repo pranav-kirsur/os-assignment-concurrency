@@ -49,7 +49,7 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
     clock_gettime(CLOCK_REALTIME, &ts);
     time_t inittime = ts.tv_sec;
     //while time is less than maxwaittime
-    while (clock_gettime(CLOCK_REALTIME, &ts), ts.tv_sec - inittime < maxwaitime)
+    while (clock_gettime(CLOCK_REALTIME, &ts), ts.tv_sec - inittime <= maxwaitime)
     {
         //flag to check whether a cab has been assigned
         int is_cab_assigned = 0;
@@ -65,6 +65,21 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     is_cab_assigned = 1;
                     printf("Rider %d has been assigned cab number %d \n", id, cabs_array[i].id);
                     fflush(stdout);
+
+                    //unlock the mutex
+                    pthread_mutex_unlock(&lock);
+
+                    //Wait till ride time
+                    sleep(ride_time);
+
+                    //print that ride has ended
+                    printf("Rider %d has ended the ride\n", id);
+
+                    //modify status of cab the rider was in inside of a mutex lock
+                    pthread_mutex_lock(&lock);
+                    cabs_array[i].state = STATE_WAIT;
+                    pthread_mutex_unlock(&lock);
+
                     break;
                 }
             }
@@ -78,6 +93,28 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     cabs_array[i].state = STATE_ON_RIDE_POOL_ONE;
                     is_cab_assigned = 1;
                     printf("Rider %d has been assigned cab number %d \n", id, cabs_array[i].id);
+
+                    //unlock the mutex
+                    pthread_mutex_unlock(&lock);
+
+                    //Wait till ride time
+                    sleep(ride_time);
+
+                    //print that ride has ended
+                    printf("Rider %d has ended the ride\n", id);
+
+                    //modify status of cab the rider was in inside of a mutex lock
+                    pthread_mutex_lock(&lock);
+                    if (cabs_array[i].state == STATE_ON_RIDE_POOL_FULL)
+                    {
+                        cabs_array[i].state = STATE_ON_RIDE_POOL_ONE;
+                    }
+                    else if (cabs_array[i].state == STATE_ON_RIDE_POOL_ONE)
+                    {
+                        cabs_array[i].state = STATE_WAIT;
+                    }
+                    pthread_mutex_unlock(&lock);
+
                     break;
                 }
                 else if (cabs_array[i].state == STATE_ON_RIDE_POOL_ONE)
@@ -85,19 +122,45 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     cabs_array[i].state = STATE_ON_RIDE_POOL_FULL;
                     is_cab_assigned = 1;
                     printf("Rider %d has been assigned cab number %d \n", id, cabs_array[i].id);
+
+                    //unlock the mutex
+                    pthread_mutex_unlock(&lock);
+
+                    //Wait till ride time
+                    sleep(ride_time);
+
+                    //print that ride has ended
+                    printf("Rider %d has ended the ride\n", id);
+
+                    //modify status of cab the rider was in inside of a mutex lock
+                    pthread_mutex_lock(&lock);
+                    if (cabs_array[i].state == STATE_ON_RIDE_POOL_FULL)
+                    {
+                        cabs_array[i].state = STATE_ON_RIDE_POOL_ONE;
+                    }
+                    else if (cabs_array[i].state == STATE_ON_RIDE_POOL_ONE)
+                    {
+                        cabs_array[i].state = STATE_WAIT;
+                    }
+                    pthread_mutex_unlock(&lock);
+
                     break;
                 }
             }
         }
-        //unlock mutex
-        pthread_mutex_unlock(&lock);
-        if(is_cab_assigned)
+        if (is_cab_assigned)
         {
             return;
         }
+        else
+        {
+            //release the mutex lock
+            pthread_mutex_unlock(&lock);
+        }
+        
     }
     //print timeout message
-    printf("Rider %d timed out\n",id);
+    printf("Rider %d timed out\n", id);
     fflush(stdout);
     return;
 }
