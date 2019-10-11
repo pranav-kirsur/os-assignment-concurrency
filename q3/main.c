@@ -93,9 +93,12 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
         pthread_mutex_unlock(&lock);
         if(is_cab_assigned)
         {
-            break;
+            return;
         }
     }
+    //print timeout message
+    printf("Rider %d timed out\n",id);
+    fflush(stdout);
     return;
 }
 
