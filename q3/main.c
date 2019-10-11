@@ -73,7 +73,7 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     sleep(ride_time);
 
                     //print that ride has ended
-                    printf("Rider %d has ended the ride\n", id);
+                    printf("Rider %d has finished the ride\n", id);
 
                     //modify status of cab the rider was in inside of a mutex lock
                     pthread_mutex_lock(&lock);
@@ -101,7 +101,7 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     sleep(ride_time);
 
                     //print that ride has ended
-                    printf("Rider %d has ended the ride\n", id);
+                    printf("Rider %d has finished the ride\n", id);
 
                     //modify status of cab the rider was in inside of a mutex lock
                     pthread_mutex_lock(&lock);
@@ -130,7 +130,7 @@ void book_cab(int cab_type, int maxwaitime, int ride_time, int id)
                     sleep(ride_time);
 
                     //print that ride has ended
-                    printf("Rider %d has ended the ride\n", id);
+                    printf("Rider %d has finished the ride\n", id);
 
                     //modify status of cab the rider was in inside of a mutex lock
                     pthread_mutex_lock(&lock);
