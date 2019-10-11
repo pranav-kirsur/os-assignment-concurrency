@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include <pthread.h>
 
 //states
@@ -15,6 +16,9 @@
 
 //Max waiting time for rider
 #define MAX_WAIT_TIME 5
+
+//Number of cabs, number of riders, number of payment servers
+int n, m, k;
 
 struct Cab
 {
@@ -41,6 +45,14 @@ int getrandom(int lower_bound, int upper_bound)
 
 void book_cab(int cab_type, int maxwaitime, int ride_time)
 {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    time_t inittime = ts.tv_sec;
+    while (clock_gettime(CLOCK_REALTIME, &ts), ts.tv_sec - inittime < maxwaitime)
+    {
+        //lock and then look for cabs
+        
+    }
     return;
 }
 
@@ -54,10 +66,12 @@ void *rider(void *args)
     int cab_type = getrandom(0, 1);
     int ride_time = getrandom(1, 5);
 
+    //print request
+    printf("Rider %d has requested a cab of type %s with max waiting time as %d and ride time as %d\n", id, cab_type == TYPE_PREMIER ? "premier" : "pool", MAX_WAIT_TIME, ride_time);
+    fflush(stdout);
+
     //book the cab
     book_cab(cab_type, MAX_WAIT_TIME, ride_time);
-    printf("Rider %d has requested a cab of type %d with max waiting time as %d and ride time as %d\n", id, cab_type, MAX_WAIT_TIME, ride_time);
-    fflush(stdout);
 
     //end the thread
     return NULL;
@@ -65,7 +79,6 @@ void *rider(void *args)
 
 int main()
 {
-    int n, m, k;
     printf("Enter the number of cabs, the  number of riders, and the number of payment servers\n");
     fflush(stdout);
     scanf("%d%d%d", &n, &m, &k);
