@@ -173,6 +173,7 @@ int book_cab(int cab_type, int maxwaitime, int ride_time, int id)
     }
     //print timeout message
     printf("Rider %d timed out\n", id);
+    num_in_sim--;
     fflush(stdout);
     return -1;
 }
