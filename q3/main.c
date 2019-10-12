@@ -187,13 +187,17 @@ void *rider(void *args)
     //generate random arguments for booking cab
     int cab_type = getrandom(0, 1);
     int ride_time = getrandom(1, 5);
+    int max_wait_time = getrandom(1,5);
+
+    //sleep for some random amount of time
+    sleep(getrandom(1,5));
 
     //print request
-    printf("Rider %d has requested a cab of type %s with max waiting time as %d and ride time as %d\n", id, cab_type == TYPE_PREMIER ? "premier" : "pool", MAX_WAIT_TIME, ride_time);
+    printf("Rider %d has requested a cab of type %s with max waiting time as %d and ride time as %d\n", id, cab_type == TYPE_PREMIER ? "premier" : "pool", max_wait_time, ride_time);
     fflush(stdout);
 
     //book the cab
-    int cab_assigned = book_cab(cab_type, MAX_WAIT_TIME, ride_time, id);
+    int cab_assigned = book_cab(cab_type, max_wait_time, ride_time, id);
 
     //if rider didn't timeout then set waiting for payment server and increment the semaphore
     if (cab_assigned != -1)
@@ -330,7 +334,7 @@ int main()
             {
                 sem_post(&semaphore_waiting_for_payment_server);
             }
-            break;  
+            break;
         }
     }
 
