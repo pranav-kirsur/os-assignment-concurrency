@@ -112,6 +112,10 @@ void *servingtable(void *tableargs)
         while (tables[id].is_serving_container_occupied == 0)
         {
             //do nothing
+            if(num_students_left<=0)
+            {
+                return NULL;
+            }
         }
         printf("Serving table %d entering serving phase\n", id);
         //serving mode
