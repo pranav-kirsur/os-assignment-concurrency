@@ -153,6 +153,11 @@ void wait_for_slot(int id)
     }
 }
 
+void student_in_slot()
+{
+    return;
+}
+
 //function for students thread
 void *student(void *studentargs)
 {
@@ -162,6 +167,7 @@ void *student(void *studentargs)
     printf("Student %d is waiting to be allocated a slot on the serving table\n", id);
 
     wait_for_slot(id);
+    student_in_slot();
     return NULL;
 }
 
